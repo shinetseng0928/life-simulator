@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>人生重開模擬器</title>
+<style>
+:root{font-family:system-ui,"Microsoft JhengHei",sans-serif;color:#edf3ff;background:#0b1020}*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(circle at 10% 0%,#263c72 0%,transparent 35%),#0b1020}
+main{max-width:950px;margin:auto;padding:28px 18px 60px}.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+h1{font-size:clamp(27px,5vw,43px);margin:8px 0}h2{margin:0 0 12px;font-size:23px}p{line-height:1.7;color:#cbd5eb}
+.muted{color:#9eafd1}.pill{border:1px solid #516b9c;border-radius:30px;padding:8px 13px;color:#b7cbf5;font-size:13px}
+.panel{background:#17243cdd;border:1px solid #344666;border-radius:20px;padding:24px;margin:18px 0;box-shadow:0 12px 35px #0003}
+button{border:0;border-radius:12px;background:#648cff;color:#08112a;padding:13px 18px;font-weight:800;font-size:15px;cursor:pointer;transition:.15s}
+button:hover{filter:brightness(1.12);transform:translateY(-1px)}button:focus-visible{outline:3px solid #fbbf24;outline-offset:3px}
+button.secondary{background:#344867;color:#fff}button.danger{background:#53374b;color:#ffd7e1}
+.actions{display:flex;gap:10px;flex-wrap:wrap}.hidden{display:none!important}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.stat{background:#243553;border-radius:13px;padding:14px}.stat-head{display:flex;justify-content:space-between;font-size:14px;gap:4px}
+.track{height:9px;background:#101b30;border-radius:20px;overflow:hidden;margin-top:12px}.fill{height:100%;background:linear-gradient(90deg,#62c2ff,#a38cff);transition:width .3s}
+.money{color:#8ef0c3;font-weight:800}.event{border-left:4px solid #f8c76b;padding-left:18px;margin:22px 0}
+.choice{display:block;width:100%;text-align:left;margin:9px 0;background:#30496f;color:#fff}
+.result{padding:15px;background:#173e3d;border-radius:12px;margin:16px 0;color:#b7ffdd}
+.log{max-height:200px;overflow:auto;padding-left:22px;color:#cbd5eb;line-height:1.7}
+.badge{display:inline-block;background:#3b4d72;border-radius:8px;padding:5px 10px;font-size:13px;margin-bottom:10px}
+footer{text-align:center;color:#8898b8;font-size:13px;margin-top:25px}
+@media(max-width:640px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.panel{padding:18px}.top{align-items:flex-start}}
+</style>
+</head>
+<body><main>
+<div class="top"><div><div class="muted">🎮 LIFE RESTART SIMULATOR</div><h1>人生重開模擬器</h1></div><span class="pill">每一次選擇，都是新的人生</span></div>
+<section id="home" class="panel"><h2>✨ 如果人生可以重來？</h2><p>隨機出生、體驗成長、做出選擇！你的智力、魅力、健康、幸福、運氣和財富會隨事件改變。從 0 歲一路玩到 80 歲，看看你會迎來什麼結局。</p><div class="actions"><button id="start">🎲 開始新人生</button><button id="continue" class="secondary hidden">▶ 繼續上次人生</button></div><p class="muted">遊戲會自動儲存在此瀏覽器，不需要註冊。</p></section>
+<section id="birth" class="panel hidden"><h2>👶 你出生了！</h2><p id="background"></p><div id="birthStats" class="grid"></div><div class="actions" style="margin-top:20px"><button id="begin">開始人生旅程 →</button><button id="reroll" class="secondary">重新抽取出生</button></div></section>
+<section id="game" class="hidden">
+<div class="panel"><div class="top"><h2>🧭 人生進行中</h2><span id="age" class="pill"></span></div><p id="family"></p><div id="stats" class="grid"></div></div>
+<div class="panel"><span id="stage" class="badge"></span><div class="event"><h2 id="eventTitle"></h2><p id="eventDesc"></p></div><div id="choices"></div><div id="feedback" class="result hidden"></div><div class="actions"><button id="next" class="hidden">進入下一年 →</button><button id="restart" class="danger">↻ 重新開始</button></div></div>
+<div class="panel"><h2>📜 人生紀錄</h2><ol id="history" class="log"></ol></div>
+</section>
+<section id="ending" class="panel hidden"><span class="badge">🏆 人生結算</span><h2 id="endingTitle"></h2><p id="endingDesc"></p><div id="endingStats" class="grid"></div><h2 style="margin-top:24px">人生回顧</h2><ol id="endingHistory" class="log"></ol><button id="again">🎲 再活一次</button></section>
+<footer>純前端作品 · HTML + CSS + JavaScript · 可部署至 GitHub Pages</footer>
+</main>
+<script>
+"use strict";
+const $=id=>document.getElementById(id),KEY="life-restart-save-v1";
+const names={intelligence:"🧠 智力",charm:"✨ 魅力",health:"❤️ 健康",happiness:"😊 幸福",luck:"🍀 運氣",wealth:"💰 財富"};
+const backgrounds=[
+{name:"溫馨的普通家庭",wealth:20000,mods:{happiness:8}},
+{name:"充滿書香的家庭",wealth:15000,mods:{intelligence:12}},
+{name:"經濟拮据但互相扶持的家庭",wealth:3000,mods:{health:5,happiness:5}},
+{name:"富裕的企業家庭",wealth:100000,mods:{charm:5}},
+{name:"喜歡旅行的自由家庭",wealth:25000,mods:{luck:10,charm:5}}
+];
+const E=[
+{id:"toy",min:0,max:5,title:"神奇的積木",desc:"家人送你一盒積木，你最想怎麼玩？",choices:[["挑戰複雜造型",{intelligence:5,happiness:2}],["和家人一起玩",{charm:4,happiness:5}]]},
+{id:"story",min:0,max:9,title:"睡前故事",desc:"今晚可以選一本書。",choices:[["選科學冒險故事",{intelligence:5}],["選歡樂童話",{happiness:5,charm:2}]]},
+{id:"park",min:0,max:12,title:"公園大冒險",desc:"你發現一座沒去過的遊樂場。",choices:[["去探索",{health:4,luck:2}],["邀朋友一起來",{charm:5,happiness:3}]]},
+{id:"music",min:4,max:16,title:"音樂課",desc:"學校開放樂器體驗。",choices:[["練習一種樂器",{intelligence:3,charm:3}],["加入合奏活動",{charm:5,happiness:3}]]},
+{id:"pet",min:5,max:17,title:"照顧小動物",desc:"鄰居需要幫忙照顧寵物。",choices:[["主動幫忙",{happiness:5,charm:3}],["研究飼養知識",{intelligence:4}]]},
+{id:"contest",min:6,max:18,title:"校園競賽",desc:"你收到一張競賽邀請函。",choices:[["報名參賽",{intelligence:4,luck:3}],["幫同學加油",{charm:4,happiness:3}]]},
+{id:"exam",min:8,max:22,title:"重要考試",desc:"考試就在下週，你準備如何安排？",choices:[["認真複習",{intelligence:7,happiness:-2}],["和同學組讀書會",{intelligence:4,charm:4}]]},
+{id:"sports",min:8,max:25,title:"運動社團",desc:"朋友邀你參加球隊。",choices:[["加入球隊",{health:7,charm:3}],["在旁邊協助",{charm:4,happiness:3}]]},
+{id:"coding",min:10,max:35,title:"第一次寫程式",desc:"你發現可以用程式創造遊戲。",choices:[["做一個小遊戲",{intelligence:7,happiness:4}],["和朋友一起開發",{intelligence:4,charm:5}]]},
+{id:"volunteer",min:12,max:70,title:"社區志工",desc:"社區正在招募活動志工。",choices:[["報名參加",{charm:5,happiness:5}],["捐出一點資源",{happiness:3,wealth:-1000}]]},
+{id:"club",min:13,max:23,title:"社團招新",desc:"校園裡有很多有趣的社團。",choices:[["加入學術社團",{intelligence:5,charm:2}],["加入表演社團",{charm:6,happiness:3}]]},
+{id:"trip",min:15,max:65,title:"說走就走的旅行",desc:"朋友提議週末去旅行。",choices:[["出發！",{happiness:7,luck:3,wealth:-2500}],["存錢規劃下次旅程",{wealth:1500,intelligence:2}]]},
+{id:"university",min:18,max:24,title:"升學或實作",desc:"你獲得進修和實習的機會。",choices:[["繼續進修",{intelligence:8,wealth:-4000}],["參加實習",{charm:4,wealth:4500}]]},
+{id:"parttime",min:16,max:28,title:"第一份兼職",desc:"附近店家正在徵人。",choices:[["嘗試兼職",{wealth:6000,charm:3,health:-2}],["專注技能學習",{intelligence:6,happiness:2}]]},
+{id:"interview",min:19,max:42,title:"求職面試",desc:"有家公司邀請你參加面試。",choices:[["努力準備面試",{wealth:8500,intelligence:3}],["先探索其他方向",{luck:5,happiness:4}]]},
+{id:"mentor",min:19,max:50,title:"遇見職涯導師",desc:"一位前輩願意分享經驗。",choices:[["虛心請教",{intelligence:6,charm:3}],["參加實作工作坊",{intelligence:4,wealth:-1000,luck:3}]]},
+{id:"startup",min:21,max:55,title:"創業邀請",desc:"朋友提出一個有趣的商業點子。",choices:[["小規模嘗試創業",{wealth:12000,luck:4,health:-3}],["穩定累積專業",{intelligence:5,wealth:4000}]]},
+{id:"promotion",min:23,max:65,title:"升遷機會",desc:"主管想交給你一項新任務。",choices:[["接受挑戰",{wealth:11000,intelligence:3,health:-4}],["維持工作與生活平衡",{happiness:6,health:4}]]},
+{id:"sideproject",min:18,max:60,title:"週末副業",desc:"你想到一個可以實作的點子。",choices:[["做成作品",{intelligence:5,wealth:4500}],["先研究市場",{intelligence:4,luck:4}]]},
+{id:"saving",min:18,max:75,title:"理財計畫",desc:"你想好好管理存款。",choices:[["設定儲蓄目標",{wealth:5000,intelligence:3}],["安排休閒預算",{happiness:6,wealth:-1800}]]},
+{id:"festival",min:12,max:80,title:"城市文化節",desc:"街上正在舉辦大型文化節。",choices:[["和朋友一起參加",{charm:5,happiness:5,wealth:-1000}],["當活動志工",{charm:6,health:2}]]},
+{id:"fitness",min:16,max:80,title:"健康新習慣",desc:"你決定改善日常作息。",choices:[["規律運動",{health:8,happiness:2}],["學習健康料理",{health:5,intelligence:3,wealth:-800}]]},
+{id:"reading",min:10,max:80,title:"圖書館的一天",desc:"你發現一本很吸引人的書。",choices:[["深入閱讀",{intelligence:6}],["和讀書會討論",{intelligence:3,charm:4}]]},
+{id:"friend",min:12,max:80,title:"久違的老朋友",desc:"多年沒聯絡的朋友傳來訊息。",choices:[["約出來聊聊",{happiness:7,charm:4}],["寫一封長信",{happiness:4,intelligence:2}]]},
+{id:"hobby",min:20,max:80,title:"培養新興趣",desc:"你想在工作之外學點新東西。",choices:[["學習攝影",{intelligence:3,happiness:5,wealth:-1500}],["參加舞蹈課",{health:4,charm:4,wealth:-1500}]]},
+{id:"familytime",min:25,max:80,title:"珍貴的相聚",desc:"家人邀請你一起吃飯。",choices:[["安排家庭聚餐",{happiness:8,wealth:-1200}],["親手準備料理",{happiness:6,health:2}]]},
+{id:"move",min:25,max:70,title:"搬到新城市",desc:"你得到外地發展的機會。",choices:[["探索新城市",{luck:5,charm:4,wealth:-4000}],["留在熟悉的地方",{happiness:5,wealth:3000}]]},
+{id:"community",min:35,max:80,title:"社區改善計畫",desc:"居民希望一起改善生活環境。",choices:[["帶頭協調",{charm:7,happiness:3}],["提供專業協助",{intelligence:4,happiness:4}]]},
+{id:"teaching",min:35,max:80,title:"分享人生經驗",desc:"年輕人希望聽聽你的故事。",choices:[["開設免費講座",{charm:5,happiness:5}],["寫成教學文章",{intelligence:5,happiness:3}]]},
+{id:"garden",min:40,max:80,title:"庭院裡的小計畫",desc:"你有機會種植一座小花園。",choices:[["開始種花",{health:5,happiness:6,wealth:-800}],["和鄰居打造共享花園",{charm:6,happiness:5}]]},
+{id:"retire",min:55,max:80,title:"退休生活規劃",desc:"你開始思考下一階段的人生。",choices:[["多安排休閒活動",{happiness:8,health:3,wealth:-2000}],["持續接一些有趣的工作",{wealth:5500,intelligence:3}]]},
+{id:"legacy",min:60,max:80,title:"留下自己的故事",desc:"你想為下一代留下什麼？",choices:[["寫下人生回憶",{intelligence:3,happiness:6}],["傳授一項專長",{charm:5,happiness:5}]]}
+];
+const stages=[{max:12,name:"🧸 童年時光"},{max:18,name:"🎒 青春校園"},{max:40,name:"🚀 成年探索"},{max:60,name:"🏙️ 人生中場"},{max:80,name:"🌅 熟齡人生"}];
+let state=null;
+function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+function clamp(v){return Math.max(0,Math.min(100,v))}
+function show(id){for(const s of ["home","birth","game","ending"])$(s).classList.toggle("hidden",s!==id)}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){console.warn("無法儲存",e)}}
+function read(){try{const s=JSON.parse(localStorage.getItem(KEY));return s&&typeof s.age==="number"&&s.attrs&&Array.isArray(s.history)?s:null}catch(e){return null}}
+function updateContinue(){$("continue").classList.toggle("hidden",!read())}
+function newLife(){const b=backgrounds[rand(0,backgrounds.length-1)];const attrs={};for(const k of Object.keys(names)){attrs[k]=k==="wealth"?b.wealth:rand(35,75)};for(const [k,v] of Object.entries(b.mods))attrs[k]=clamp(attrs[k]+v);state={age:0,background:b.name,attrs,history:[],used:[],eventId:null,answered:false,lastResult:"",phase:"birth"};save();$("background").textContent="你出生在「"+b.name+"」。未來會發生什麼，就看你的選擇！";renderStats("birthStats");show("birth")}
+function renderStats(id){const root=$(id);root.replaceChildren();for(const [k,name] of Object.entries(names)){const value=state.attrs[k];const box=document.createElement("div");box.className="stat";const head=document.createElement("div");head.className="stat-head";const label=document.createElement("span");label.textContent=name;const num=document.createElement("strong");num.textContent=k==="wealth"?"NT$ "+value.toLocaleString("zh-TW"):String(value);if(k==="wealth")num.className="money";head.append(label,num);box.append(head);if(k!=="wealth"){const track=document.createElement("div");track.className="track";const fill=document.createElement("div");fill.className="fill";fill.style.width=value+"%";track.append(fill);box.append(track)}root.append(box)}}
+function eventPool(){return E.filter(e=>state.age>=e.min&&state.age<=e.max)}
+function selectEvent(){const pool=eventPool();let available=pool.filter(e=>!state.used.includes(e.id));if(!available.length){state.used=[];available=pool}const e=available[rand(0,available.length-1)];state.eventId=e.id;state.used.push(e.id)}
+function renderHistory(id){const list=$(id);list.replaceChildren();for(const h of state.history.slice().reverse()){const li=document.createElement("li");li.textContent=h;list.append(li)}}
+function renderGame(){if(state.age>=80){finish();return}if(!state.eventId)selectEvent();state.phase="game";save();show("game");$("age").textContent=state.age+" 歲";$("family").textContent="🏠 出生背景："+state.background;$("stage").textContent=stages.find(s=>state.age<=s.max).name;renderStats("stats");renderHistory("history");const e=E.find(x=>x.id===state.eventId)||eventPool()[0];$("eventTitle").textContent=e.title;$("eventDesc").textContent=e.desc;$("choices").replaceChildren();$("feedback").classList.toggle("hidden",!state.answered);$("feedback").textContent=state.lastResult;$("next").classList.toggle("hidden",!state.answered);if(!state.answered){e.choices.forEach((c,i)=>{const btn=document.createElement("button");btn.className="choice";btn.textContent=(i+1)+". "+c[0];btn.addEventListener("click",()=>choose(i));$("choices").append(btn)})}}
+function choose(i){if(state.answered)return;const e=E.find(x=>x.id===state.eventId),c=e.choices[i];if(!c)return;const changes=[];for(const [k,delta] of Object.entries(c[1])){const old=state.attrs[k];state.attrs[k]=k==="wealth"?Math.max(0,old+delta):clamp(old+delta);const actual=state.attrs[k]-old;changes.push(names[k]+" "+(actual>=0?"+":"")+actual)}state.answered=true;state.lastResult="你選擇「"+c[0]+"」。屬性變化："+changes.join("、");state.history.push(state.age+" 歲："+e.title+" → "+c[0]);save();renderGame()}
+function nextYear(){if(!state.answered)return;state.age++;state.eventId=null;state.answered=false;state.lastResult="";renderGame()}
+function finish(){state.phase="ending";save();show("ending");const a=state.attrs;let title,desc;if(a.wealth>=220000&&a.happiness>=65){title="🏆 人生勝利組";desc="你累積了豐富資源，也保有生活中的快樂。"}else if(a.wealth>=220000){title="💎 商業大亨";desc="你的努力讓財富穩健累積。"}else if(a.intelligence>=85){title="📚 知識大師";desc="你的一生充滿學習與探索。"}else if(a.charm>=85){title="🌟 人氣之星";desc="你總能在人群中帶來溫暖與活力。"}else if(a.happiness>=80&&a.health>=65){title="🌈 幸福人生";desc="你找到讓自己滿足的生活節奏。"}else{title="🌿 平凡而充實的人生";desc="沒有標準答案，你的每段經歷都獨一無二。"}$("endingTitle").textContent=title;$("endingDesc").textContent="80 歲的人生旅程完成！"+desc;renderStats("endingStats");renderHistory("endingHistory")}
+function restart(){if(confirm("確定重新開始嗎？目前的人生進度會被取代。"))newLife()}
+$("start").onclick=newLife;$("reroll").onclick=newLife;$("begin").onclick=()=>{state.phase="game";renderGame()};$("continue").onclick=()=>{state=read();if(!state)return updateContinue();if(state.phase==="birth"){ $("background").textContent="你出生在「"+state.background+"」。";renderStats("birthStats");show("birth")}else if(state.phase==="ending")finish();else renderGame()};
+$("next").onclick=nextYear;$("restart").onclick=restart;$("again").onclick=newLife;
+updateContinue();
+</script></body></html>
